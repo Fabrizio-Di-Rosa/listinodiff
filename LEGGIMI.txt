@@ -1,0 +1,2 @@
+ListinoDiff — demo sperimentale.
+La pagina index.html presenta il servizio e demo.html esegue il confronto CSV localmente nel browser. Nessun pagamento attivo. Non caricare dati personali o riservati senza verifica.
