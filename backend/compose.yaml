@@ -11,10 +11,13 @@ services:
     networks:
       - monitor-proxy
     read_only: true
+    user: "10001:10001"
     security_opt:
       - no-new-privileges:true
     cap_drop:
       - ALL
+    pids_limit: 100
+    mem_limit: 128m
 networks:
   monitor-proxy:
     external: true
