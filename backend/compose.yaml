@@ -1,0 +1,20 @@
+services:
+  listinodiff-api:
+    build: .
+    container_name: listinodiff-api
+    restart: unless-stopped
+    environment:
+      LISTINODIFF_DB: /data/feedback.sqlite3
+      LISTINODIFF_ORIGIN: https://listinodiff.antefide.it
+    volumes:
+      - /opt/antefide/listinodiff/data:/data
+    networks:
+      - monitor-proxy
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+networks:
+  monitor-proxy:
+    external: true
