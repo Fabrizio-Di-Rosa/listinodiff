@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0b1830"><title>Il tuo parere — ListinoDiff</title>
+<style>
+:root{font-family:Inter,system-ui,sans-serif;color:#14243c;background:#f4f7fc}*{box-sizing:border-box}body{margin:0;line-height:1.55}header{background:#0b1830;color:white;padding:24px max(20px,calc((100vw - 740px)/2))}header a{color:white;text-decoration:none;font-weight:800;font-size:22px}header b{color:#87acff}main{max-width:740px;margin:38px auto 70px;padding:0 18px}h1{font-size:clamp(28px,4vw,40px);letter-spacing:-.04em}p{color:#52627b}.panel{background:white;padding:30px;border:1px solid #e2e8f2;border-radius:16px;box-shadow:0 12px 30px #0b183008}fieldset{border:0;padding:0;margin:0 0 26px}legend{font-weight:750;margin-bottom:11px}label.choice{display:block;padding:9px 0;cursor:pointer}input[type=radio],input[type=checkbox]{accent-color:#235de8;margin-right:9px}input[type=email]{width:100%;padding:13px;border:1px solid #b8c7df;border-radius:9px;font:inherit;margin-top:9px}button{background:#235de8;color:white;padding:14px 22px;border:0;border-radius:10px;font:inherit;font-weight:750;cursor:pointer}button:disabled{opacity:.6;cursor:wait}a{color:#235de8}.hint{font-size:13px}.status{font-weight:700}footer{margin-top:30px;color:#64748b;font-size:13px}.trap{position:absolute;left:-9999px} @media(max-width:500px){.panel{padding:20px}}
+</style></head><body>
+<header><a href="./">Listino<b>Diff</b></a></header>
+<main><h1>Il tuo parere conta.</h1><p>Stiamo valutando ListinoDiff, uno strumento per confrontare listini CSV. Il questionario richiede circa un minuto. Nessun acquisto o registrazione.</p>
+<div class="panel"><form id="feedback">
+<fieldset><legend>In quale settore lavori?</legend>
+<label class="choice"><input type="radio" name="settore" value="commercio" required>Commercio</label>
+<label class="choice"><input type="radio" name="settore" value="servizi">Servizi</label>
+<label class="choice"><input type="radio" name="settore" value="produzione">Produzione</label>
+<label class="choice"><input type="radio" name="settore" value="altro">Altro</label></fieldset>
+<fieldset><legend>Quanto spesso confronti listini fornitori?</legend>
+<label class="choice"><input type="radio" name="frequenza" value="giornaliera" required>Ogni giorno</label>
+<label class="choice"><input type="radio" name="frequenza" value="settimanale">Ogni settimana</label>
+<label class="choice"><input type="radio" name="frequenza" value="mensile">Ogni mese</label>
+<label class="choice"><input type="radio" name="frequenza" value="occasionale">Occasionalmente</label></fieldset>
+<fieldset><legend>Quanto ti sarebbe utile questo strumento?</legend>
+<label class="choice"><input type="radio" name="utilita" value="molto" required>Molto</label>
+<label class="choice"><input type="radio" name="utilita" value="abbastanza">Abbastanza</label>
+<label class="choice"><input type="radio" name="utilita" value="poco">Poco</label>
+<label class="choice"><input type="radio" name="utilita" value="per_niente">Per niente</label></fieldset>
+<fieldset><legend>Valuteresti un prezzo indicativo di 12 € per elaborazione?</legend>
+<label class="choice"><input type="radio" name="prezzo" value="si" required>Sì</label>
+<label class="choice"><input type="radio" name="prezzo" value="forse">Forse</label>
+<label class="choice"><input type="radio" name="prezzo" value="no">No</label></fieldset>
+<fieldset><legend>Vuoi essere ricontattato? (facoltativo)</legend>
+<label for="email" class="hint">Indirizzo email</label><input type="email" name="email" id="email" autocomplete="email" maxlength="254" placeholder="nome@azienda.it">
+<label class="choice"><input type="checkbox" name="ricontatto" id="ricontatto">Acconsento a essere ricontattato via email esclusivamente per aggiornamenti sul progetto ListinoDiff.</label>
+<p class="hint">Puoi revocare il consenso scrivendo a privacy@antefide.it.</p></fieldset>
+<div class="trap" aria-hidden="true"><label>Lascia vuoto <input type="text" name="website" tabindex="-1" autocomplete="off"></label></div>
+<p class="hint">Inviando il questionario dichiari di aver letto l'<a href="./privacy.html" target="_blank" rel="noopener">informativa privacy</a>. Non inserire dati riservati o di terzi.</p>
+<button type="submit" id="send">Invia il tuo parere</button><p class="status" id="status" role="status" aria-live="polite"></p>
+</form></div><footer><a href="./">← Torna alla homepage</a> · ANTEFIDE S.R.L.S.</footer></main>
+<script>
+const form=document.getElementById('feedback'),status=document.getElementById('status'),button=document.getElementById('send');
+form.addEventListener('submit',async event=>{
+event.preventDefault();const data=Object.fromEntries(new FormData(form).entries());
+data.ricontatto=document.getElementById('ricontatto').checked;
+if((data.email&&!data.ricontatto)||(!data.email&&data.ricontatto)){status.textContent='Per il ricontatto inserisci email e consenso, oppure lascia entrambi vuoti.';return}
+button.disabled=true;status.textContent='Invio in corso…';
+try{const response=await fetch('./api/feedback',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data),credentials:'same-origin'});const result=await response.json();if(!response.ok)throw Error(result.error||'Invio non riuscito');form.reset();status.textContent='Grazie! Il tuo parere è stato registrato.'}
+catch(err){status.textContent='Non è stato possibile inviare il questionario: '+err.message}
+finally{button.disabled=false}
+});
+</script></body></html>
