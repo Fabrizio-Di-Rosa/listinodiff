@@ -24,8 +24,8 @@ document.getElementById('start').onclick=async()=>{
    try{
     const doc=frame.contentDocument;if(!doc)throw Error('iframe non accessibile: usare stesso origin HTTP');
     setFile(doc.getElementById('a'),file(old,a,'precedente'));setFile(doc.getElementById('b'),file(updated,b,'aggiornato'));
-    doc.getElementById('limit').value='15';doc.getElementById('run').click();
-    await waitFor(()=>{const status=doc.getElementById('status').textContent; if(/errore|impossibile|non disponibile|manca|vuoto|non supportato/i.test(status))throw Error(status);return !doc.getElementById('result').hidden && doc.getElementById('stat-issues').textContent==='7' ? true : false});
+    doc.getElementById('limit').value='15';doc.getElementById('result').hidden=true;doc.getElementById('status').textContent='';doc.getElementById('run').click();
+    await waitFor(()=>{const status=doc.getElementById('status').textContent; if(/errore|impossibile|non disponibile|manca|vuoto|non supportato/i.test(status))throw Error(status);return status==='Confronto completato' && !doc.getElementById('result').hidden});
     const count=doc.getElementById('stat-issues').textContent,prev=doc.getElementById('stat-prev').textContent,next=doc.getElementById('stat-next').textContent;
     const types=[...doc.querySelectorAll('#body tr td:first-child')].map(x=>x.textContent);
     const expected={'Prezzo anomalo':2,'Scorta azzerata':1,'Prodotto scomparso':1,'Nuovo prodotto':1,'SKU duplicato':1,'Descrizione modificata':1};
