@@ -20,8 +20,7 @@ function csv(s){s=s.replace(/^\uFEFF/,'');const first=s.split(/\r?\n/)[0];const 
 
 const MAX_BYTES=15*1024*1024;
 const LIBS={
- xlsx:'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js',
- pdf:'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js'
+ xlsx:'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js'
 };
 const loaded={};
 async function library(kind){
@@ -50,37 +49,6 @@ async function extractFile(file){
   return rowsToCsv(rows);
  }
  if(ext==='pdf')throw Error(file.name+': importazione PDF non ancora disponibile; usa CSV o XLSX');
- if(ext==='pdf'){
-  await library('pdf');
-  if(typeof pdfjsLib==='undefined')throw Error('Lettore PDF non disponibile');
-  pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-  const pdf=await pdfjsLib.getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise;
-  if(pdf.numPages>30)throw Error(file.name+': PDF oltre 30 pagine non supportato');
-  let lines=[];
-  for(let pageNo=1;pageNo<=pdf.numPages;pageNo++){
-   const page=await pdf.getPage(pageNo),items=(await page.getTextContent()).items.filter(i=>i.str.trim());
-   const groups=new Map();
-   for(const item of items){const y=Math.round(item.transform[5]/3)*3;const group=groups.get(y)||[];group.push({x:item.transform[4],text:item.str.trim()});groups.set(y,group)}
-   for(const [,parts] of [...groups].sort((a,b)=>b[0]-a[0])){
-    const cells=parts.sort((a,b)=>a.x-b.x);
-    if(cells.length>=2)lines.push(cells.map(c=>c.text));
-   }
-  }
-  if(!lines.length)throw Error(file.name+': PDF privo di tabella digitale leggibile (scansione o impaginazione non supportata)');
-  const headerIndex=lines.findIndex(row=>row.some(cell=>/^(sku|codice|codice_articolo)$/i.test(cell.trim())));
-  if(headerIndex<0)throw Error(file.name+': intestazione SKU/Codice non riconosciuta nel PDF');
-  const header=lines[headerIndex],width=header.length;
-  if(width<2)throw Error(file.name+': tabella PDF senza colonne dati');
-  if(!header.some(h=>/^(prezzo|price|quantita|quantità|giacenza|stock|quantity|descrizione|nome|description)$/i.test(h.trim())))throw Error(file.name+': PDF senza colonne di prezzo, quantità o descrizione riconoscibili');
-  if(new Set(header.map(h=>h.trim().toLowerCase())).size!==width)throw Error(file.name+': intestazioni PDF duplicate');
-  const body=lines.slice(headerIndex+1).filter(row=>row.length===width);
-  if(body.length>10000)throw Error(file.name+': troppe righe nel PDF');
-  if(!body.length||lines.slice(headerIndex+1).some(row=>row.length!==width))throw Error(file.name+': tabella PDF non uniforme; esporta il listino in CSV o Excel');
-  if(body.some(row=>row.some(cell=>!cell.trim())))throw Error(file.name+': celle PDF vuote o non leggibili');
-  const skuCol=header.findIndex(h=>/^(sku|codice|codice_articolo)$/i.test(h.trim()));
-  if(body.some(row=>!row[skuCol].trim()))throw Error(file.name+': codice articolo mancante nel PDF');
-  return rowsToCsv([header,...body]);
- }
  throw Error(file.name+': formato non supportato');
 }
 function val(r,keys){for(const k of keys)if(Object.hasOwn(r,k))return r[k];return undefined}const keys={sku:['sku','codice','codice_articolo'],price:['prezzo','price'],qty:['quantita','quantità','giacenza','stock','quantity'],name:['descrizione','nome','description']};function num(s){if(s===undefined||s==='')return null;let t=s.replace(/[€\s]/g,'');if(t.includes(',')&&t.includes('.'))t=t.lastIndexOf(',')>t.lastIndexOf('.')?t.replace(/\./g,'').replace(',','.'):t.replace(/,/g,'');else t=t.replace(',','.');const n=Number(t);return Number.isFinite(n)?n:null}
