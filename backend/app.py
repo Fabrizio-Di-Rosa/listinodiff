@@ -7,13 +7,14 @@ import time
 from datetime import datetime, timezone, timedelta
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from threading import Lock
+from threading import Lock, Thread, Event
 
 DB_PATH = Path(os.environ.get("LISTINODIFF_DB", "/data/feedback.sqlite3"))
 HOST = os.environ.get("LISTINODIFF_HOST", "0.0.0.0")
 PORT = int(os.environ.get("LISTINODIFF_PORT", "8000"))
 ALLOWED_ORIGIN = os.environ.get("LISTINODIFF_ORIGIN", "https://listinodiff.antefide.it")
 RATE_LOCK = Lock()
+PURGE_STOP = Event()
 RECENT = {}
 FIELDS = {
     "settore": {"commercio", "servizi", "produzione", "altro"},
@@ -100,7 +101,10 @@ class Handler(BaseHTTPRequestHandler):
         except (ValueError, UnicodeDecodeError, json.JSONDecodeError) as exc:
             return self.respond(400, {"error": str(exc)[:150]})
         # Conservative per-IP limit; Caddy should also rate-limit at edge if available.
-        ip = self.client_address[0]
+        # Only deploy behind Caddy, which must overwrite X-Real-IP from {remote_host}.
+        ip = self.headers.get("X-Real-IP", self.client_address[0])
+        if not re.fullmatch(r"[0-9a-fA-F:.]{3,45}", ip):
+            return self.respond(400, {"error": "Client non valido"})
         now = time.monotonic()
         with RATE_LOCK:
             for key in list(RECENT):
@@ -125,7 +129,16 @@ class Handler(BaseHTTPRequestHandler):
             return self.respond(503, {"error": "Servizio temporaneamente non disponibile"})
         self.respond(201, {"status": "received"})
 
+def purge_loop(stop_event=PURGE_STOP, interval=3600):
+    while not stop_event.wait(interval):
+        try:
+            with connect() as conn:
+                purge(conn)
+        except sqlite3.Error:
+            pass  # Retry next cycle; avoid leaking sensitive information in logs.
+
 if __name__ == "__main__":
     with connect() as conn:
         purge(conn)
+    Thread(target=purge_loop, daemon=True).start()
     ThreadingHTTPServer((HOST, PORT), Handler).serve_forever()
