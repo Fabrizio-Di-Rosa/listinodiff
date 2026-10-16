@@ -46,6 +46,7 @@ async function extractFile(file){
   if(!sheet)throw Error(file.name+': nessun foglio Excel');
   const rows=XLSX.utils.sheet_to_json(sheet,{header:1,defval:'',raw:false});
   if(rows.length<2)throw Error(file.name+': foglio vuoto');
+  if(!rows[0].some(v=>/^(sku|codice|codice_articolo)$/i.test(String(v).trim())))throw Error(file.name+': prima riga del primo foglio senza colonna SKU/Codice');
   return rowsToCsv(rows);
  }
  if(ext==='pdf'){
@@ -68,8 +69,10 @@ async function extractFile(file){
   const headerIndex=lines.findIndex(row=>row.some(cell=>/^(sku|codice|codice_articolo)$/i.test(cell.trim())));
   if(headerIndex<0)throw Error(file.name+': intestazione SKU/Codice non riconosciuta nel PDF');
   const header=lines[headerIndex],width=header.length;
+  if(new Set(header.map(h=>h.trim().toLowerCase())).size!==width)throw Error(file.name+': intestazioni PDF duplicate');
   const body=lines.slice(headerIndex+1).filter(row=>row.length===width);
   if(!body.length||lines.slice(headerIndex+1).some(row=>row.length!==width))throw Error(file.name+': tabella PDF non uniforme; esporta il listino in CSV o Excel');
+  if(body.some(row=>row.some(cell=>!cell.trim())))throw Error(file.name+': celle PDF vuote o non leggibili');
   return rowsToCsv([header,...body]);
  }
  throw Error(file.name+': formato non supportato');
