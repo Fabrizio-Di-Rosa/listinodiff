@@ -9,7 +9,7 @@ services:
     volumes:
       - /opt/antefide/listinodiff/data:/data
     networks:
-      - monitor-proxy
+      - listinodiff-private
     read_only: true
     user: "10001:10001"
     security_opt:
@@ -19,5 +19,5 @@ services:
     pids_limit: 100
     mem_limit: 128m
 networks:
-  monitor-proxy:
+  listinodiff-private:
     external: true
