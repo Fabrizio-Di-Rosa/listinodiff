@@ -1,0 +1,39 @@
+<!doctype html><html lang="it"><meta charset="utf-8"><title>ListinoDiff — smoke test importazione</title><style>body{font:16px system-ui;max-width:850px;margin:3rem auto;padding:0 1rem}li{margin:.7rem 0}.pass{color:#067344}.fail{color:#b42318}iframe{width:100%;height:240px;border:1px solid #ddd}</style>
+<h1>Collaudo browser CSV / XLSX</h1><p>Questo test usa la demo reale in un iframe, con listini sintetici. Aprire la pagina da un server HTTP sulla stessa origine di demo.html, non da file://.</p><button id="start">Esegui test</button><ol id="results"></ol><iframe id="demo" src="../demo.html" title="Demo sotto test"></iframe>
+<script>
+const old=[['SKU','Descrizione','Prezzo','Quantita'],['A100','Vite',10,100],['B200','Bullone',25,60],['C300','Rondella',4.5,80],['D400','Dado',12,40],['F600','Cerniera',8,15]];
+const updated=[['SKU','Descrizione','Prezzo','Quantita'],['A100','Vite',12,90],['B200','Bullone',40,60],['C300','Rondella',4.5,0],['E500','Molla',6,20],['E500','Molla duplicata',6,20],['F600','Cerniera rinforzata',8,15]];
+const cases=[['CSV / CSV','csv','csv'],['XLSX / XLSX','xlsx','xlsx'],['CSV / XLSX','csv','xlsx'],['XLSX / CSV','xlsx','csv']];
+const result=document.getElementById('results'), frame=document.getElementById('demo');
+function csv(rows){return rows.map(r=>r.join(';')).join('\n')}
+function file(rows,kind,name){
+ if(kind==='csv')return new File([csv(rows)],name+'.csv',{type:'text/csv'});
+ if(typeof XLSX==='undefined')throw Error('Libreria XLSX di test non caricata');
+ const wb=XLSX.utils.book_new(),ws=XLSX.utils.aoa_to_sheet(rows);XLSX.utils.book_append_sheet(wb,ws,'Listino');
+ return new File([XLSX.write(wb,{bookType:'xlsx',type:'array'})],name+'.xlsx',{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+}
+function setFile(input,f){const dt=new DataTransfer();dt.items.add(f);input.files=dt.files;input.dispatchEvent(new Event('change',{bubbles:true}))}
+function waitFor(f,timeout=20000){return new Promise((resolve,reject)=>{const start=Date.now();function tick(){try{const v=f();if(v)return resolve(v)}catch(e){return reject(e)}if(Date.now()-start>timeout)return reject(Error('Timeout'));setTimeout(tick,80)}tick()})}
+function loadLib(){return new Promise((resolve,reject)=>{if(typeof XLSX!=='undefined')return resolve();const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';s.onload=resolve;s.onerror=()=>reject(Error('Libreria XLSX non caricata'));document.head.append(s)})}
+document.getElementById('start').onclick=async()=>{
+ result.replaceChildren();document.getElementById('start').disabled=true;
+ try{
+  await loadLib();
+  for(const [label,a,b] of cases){
+   const li=document.createElement('li');li.textContent=label+': in esecuzione';result.append(li);
+   try{
+    const doc=frame.contentDocument;if(!doc)throw Error('iframe non accessibile: usare stesso origin HTTP');
+    setFile(doc.getElementById('a'),file(old,a,'precedente'));setFile(doc.getElementById('b'),file(updated,b,'aggiornato'));
+    doc.getElementById('limit').value='15';doc.getElementById('result').hidden=true;doc.getElementById('status').textContent='';doc.getElementById('run').click();
+    await waitFor(()=>{const status=doc.getElementById('status').textContent; if(/errore|impossibile|non disponibile|manca|vuoto|non supportato/i.test(status))throw Error(status);return status==='Confronto completato' && !doc.getElementById('result').hidden});
+    const count=doc.getElementById('stat-issues').textContent,prev=doc.getElementById('stat-prev').textContent,next=doc.getElementById('stat-next').textContent;
+    const types=[...doc.querySelectorAll('#body tr td:first-child')].map(x=>x.textContent);
+    const expected={'Prezzo anomalo':2,'Scorta azzerata':1,'Prodotto scomparso':1,'Nuovo prodotto':1,'SKU duplicato':1,'Descrizione modificata':1};
+    if(count!=='7'||prev!=='5'||next!=='5'||Object.entries(expected).some(([k,n])=>types.filter(x=>x===k).length!==n))throw Error('Conteggi o tipi non corrispondenti');
+    li.textContent=label+': PASS — 7 anomalie, 5+5 SKU';li.className='pass';
+   }catch(e){li.textContent=label+': FAIL — '+e.message;li.className='fail'}
+  }
+ }catch(e){const li=document.createElement('li');li.className='fail';li.textContent='Errore preparazione: '+e.message;result.append(li)}
+ finally{document.getElementById('start').disabled=false}
+};
+</script></html>
